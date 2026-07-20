@@ -23,6 +23,7 @@
     --purple:#8B5CF6;
     --road:#888e97;
     --road-edge:#6b7078;
+    --sky2:#dff1ff;
   }
   *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html,body{
@@ -33,6 +34,7 @@
     touch-action:manipulation;
     -webkit-user-select:none; user-select:none;
     position:fixed; inset:0;
+    transition:background .4s ease;
   }
   #app{
     width:100%; height:100%;
@@ -45,33 +47,59 @@
     display:flex; align-items:center; justify-content:space-between;
     padding:2px 4px 8px;
     flex-shrink:0;
+    flex-wrap:wrap;
+    row-gap:6px;
   }
+  .titleWrap{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
   .title{
-    font-size:clamp(16px,4.4vw,21px);
+    font-size:clamp(15px,4.2vw,20px);
     font-weight:800;
     color:var(--blue-dark);
     text-shadow:1px 1px 0 rgba(255,255,255,0.7);
   }
-  .topBtns{ display:flex; gap:8px; }
+  .starBadge{
+    display:flex; align-items:center; gap:3px;
+    background:#fff;
+    border-radius:14px;
+    padding:4px 10px;
+    font-weight:800;
+    font-size:13px;
+    color:var(--orange-dark);
+    box-shadow:0 3px 0 rgba(0,0,0,0.08);
+  }
+  .starBadge.pop{ animation:starBadgePop .35s ease; }
+  @keyframes starBadgePop{ 0%{transform:scale(1);} 50%{transform:scale(1.3);} 100%{transform:scale(1);} }
+  .topBtns{ display:flex; gap:6px; }
   .roundBtn{
     border:none; border-radius:16px;
-    width:44px; height:44px;
-    font-size:20px;
+    width:42px; height:42px;
+    font-size:19px;
     display:flex; align-items:center; justify-content:center;
     box-shadow:0 4px 0 rgba(0,0,0,0.15);
     cursor:pointer;
     transition:transform .06s;
   }
   .roundBtn:active{ transform:translateY(3px); box-shadow:0 1px 0 rgba(0,0,0,0.15); }
+  #undoBtn{ background:#DDE3EA; }
+  #settingsBtn{ background:var(--purple); }
   #clearAllBtn{ background:var(--orange); }
   #carBoxBtn{ background:var(--blue); }
 
-  /* ---------------- Grid ---------------- */
+  /* ---------------- Stage / grid ---------------- */
   #stageWrap{
     flex:1;
-    display:flex; align-items:center; justify-content:center;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
     min-height:0;
     position:relative;
+    gap:4px;
+  }
+  #decorStrip{
+    display:flex; justify-content:space-around; align-items:center;
+    width:min(94vw, 92vh, 480px);
+    font-size:clamp(15px,3.6vw,20px);
+    opacity:0.9;
+    pointer-events:none;
+    height:24px;
   }
   #gridWrap{
     position:relative;
@@ -79,6 +107,7 @@
     background:var(--mat);
     border-radius:18px;
     box-shadow: inset 0 0 0 5px var(--mat-dark), 0 6px 0 rgba(0,0,0,0.08);
+    transition:background .4s ease, box-shadow .4s ease;
   }
   #cellsLayer{
     position:absolute; inset:0;
@@ -89,9 +118,6 @@
     border:1px dashed rgba(255,255,255,0.55);
     display:flex; align-items:center; justify-content:center;
     overflow:visible;
-  }
-  .cell.emptyHint::after{
-    content:'';
   }
   .tile{
     width:100%; height:100%;
@@ -134,6 +160,14 @@
   .jumpTile.bounce{ animation: jumpBounce .35s ease; }
   @keyframes jumpBounce{ 0%{transform:scale(1);} 40%{transform:scale(0.82,1.16);} 70%{transform:scale(1.08,0.9);} 100%{transform:scale(1);} }
 
+  /* star tile */
+  .starIcon{
+    position:absolute; font-size:min(6vw,24px); z-index:2;
+    filter:drop-shadow(0 1px 1px rgba(0,0,0,0.3));
+    animation: starPulse 1.4s ease-in-out infinite;
+  }
+  @keyframes starPulse{ 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.18) rotate(8deg); } }
+
   /* eraser icon (inventory only) */
   .eraserTile{ font-size:min(6vw,26px); }
 
@@ -164,7 +198,7 @@
     opacity:0;
     z-index:5;
     pointer-events:none;
-    will-change:left, top, transform;
+    will-change:left, top, transform, opacity;
   }
   .carEl .carEmoji{ display:inline-block; }
 
@@ -199,14 +233,48 @@
     80%{ transform:translateX(4px); }
   }
 
+  .lapBanner{
+    position:absolute; left:50%; top:14%; transform:translate(-50%,-50%) scale(0.6);
+    background:#fff; padding:10px 22px; border-radius:20px;
+    font-weight:800; font-size:clamp(15px,4vw,20px); color:var(--green-dark);
+    box-shadow:0 6px 0 rgba(0,0,0,0.12);
+    z-index:10; opacity:0;
+    pointer-events:none;
+    animation: lapBannerAnim 1.5s ease forwards;
+  }
+  @keyframes lapBannerAnim{
+    0%{ opacity:0; transform:translate(-50%,-50%) scale(0.5); }
+    15%{ opacity:1; transform:translate(-50%,-50%) scale(1.1); }
+    25%{ transform:translate(-50%,-50%) scale(1); }
+    80%{ opacity:1; }
+    100%{ opacity:0; transform:translate(-50%,-70%) scale(1); }
+  }
+
+  /* ---------------- Toast ---------------- */
+  .toast{
+    position:fixed; left:50%; bottom:14%; transform:translateX(-50%) translateY(10px);
+    background:var(--ink); color:#fff; padding:10px 18px; border-radius:16px;
+    font-size:14px; font-weight:700; max-width:82vw; text-align:center;
+    box-shadow:0 6px 16px rgba(0,0,0,0.25);
+    z-index:100; opacity:0;
+    animation: toastAnim 2.2s ease forwards;
+  }
+  @keyframes toastAnim{
+    0%{ opacity:0; transform:translateX(-50%) translateY(10px); }
+    12%{ opacity:1; transform:translateX(-50%) translateY(0); }
+    82%{ opacity:1; }
+    100%{ opacity:0; transform:translateX(-50%) translateY(-8px); }
+  }
+
   /* ---------------- Bottom bar ---------------- */
   #bottomBar{
     flex-shrink:0;
     display:flex; flex-direction:column; gap:8px;
-    padding-top:10px;
+    padding-top:8px;
   }
   #inventory{
-    display:flex; gap:8px;
+    display:flex; gap:6px;
+    flex-wrap:wrap;
     justify-content:center;
     padding:8px 8px;
     background:var(--panel);
@@ -216,12 +284,12 @@
   }
   #inventory.disabled{ opacity:0.4; pointer-events:none; }
   .invBtn{
-    width:min(13vw,52px); height:min(13vw,52px);
-    border-radius:14px;
+    width:min(11.5vw,46px); height:min(11.5vw,46px);
+    border-radius:13px;
     border:3px solid transparent;
     background:#F1F4F8;
     display:flex; align-items:center; justify-content:center;
-    padding:6px;
+    padding:5px;
     cursor:pointer;
   }
   .invBtn.selected{
@@ -249,46 +317,83 @@
   }
   #goBtn.stopMode:active{ box-shadow:0 1px 0 var(--red-dark); }
 
-  /* ---------------- Car select modal ---------------- */
-  #carModalBackdrop{
+  /* ---------------- Modals (shared) ---------------- */
+  .modalBackdrop{
     position:fixed; inset:0; background:rgba(0,0,0,0.35);
     display:flex; align-items:center; justify-content:center;
     z-index:50;
   }
-  #carModalBackdrop.hidden{ display:none; }
-  #carModal{
+  .modalBackdrop.hidden{ display:none; }
+  .modalBox{
     background:#fff; border-radius:22px;
-    padding:22px 20px;
+    padding:20px 18px;
     box-shadow:0 10px 0 rgba(0,0,0,0.12);
     text-align:center;
-    width:min(86vw, 360px);
+    width:min(88vw, 380px);
+    max-height:82vh;
+    overflow-y:auto;
   }
-  #carModal .modalTitle{
-    font-size:18px; font-weight:800; color:var(--blue-dark); margin-bottom:16px;
+  .modalTitle{
+    font-size:18px; font-weight:800; color:var(--blue-dark); margin-bottom:14px;
   }
-  .carOptions{ display:flex; justify-content:center; gap:14px; }
+  .carOptions{ display:flex; flex-wrap:wrap; justify-content:center; gap:12px; }
   .carOpt{
-    width:78px; height:78px; border-radius:18px;
+    width:84px; height:84px; border-radius:18px;
     background:#F1F4F8; border:3px solid transparent;
-    font-size:34px;
-    display:flex; align-items:center; justify-content:center;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
     cursor:pointer;
   }
   .carOpt.chosen{ border-color:var(--blue); background:#E4F0FF; }
+  .carOpt.locked{ opacity:0.65; }
+  .carEmojiBig{ font-size:30px; }
+  .carLabel{ font-size:11px; font-weight:700; color:var(--ink); opacity:0.75; }
+  .carOpt.locked .carLabel{ color:var(--orange-dark); }
+
+  .settingsRow{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:10px 4px; border-bottom:1px solid #eef0f4;
+    gap:10px; flex-wrap:wrap;
+  }
+  .settingsRow:last-of-type{ border-bottom:none; }
+  .settingsLabel{ font-weight:800; color:var(--ink); font-size:14px; }
+  .pillGroup{ display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; }
+  .pillOpt{
+    border:2px solid #E4E8EE; background:#F7F9FC; border-radius:14px;
+    padding:7px 10px; font-size:12px; font-weight:700; color:var(--ink);
+    cursor:pointer;
+  }
+  .pillOpt.active{ border-color:var(--blue); background:#E4F0FF; color:var(--blue-dark); }
+  #soundToggleBtn{
+    border:none; border-radius:14px; padding:8px 16px; font-size:16px;
+    background:#F1F4F8; cursor:pointer;
+  }
+  #soundToggleBtn.active{ background:#E4F0FF; }
+  .closeBtn{
+    margin-top:14px; border:none; border-radius:16px; padding:10px 26px;
+    background:var(--blue); color:#fff; font-weight:800; font-size:14px;
+    cursor:pointer; box-shadow:0 4px 0 var(--blue-dark);
+  }
+  .closeBtn:active{ transform:translateY(3px); box-shadow:none; }
 </style>
 </head>
 <body>
 <div id="app">
 
   <header>
-    <div class="title">🚗 지훈이의 토미카 월드</div>
+    <div class="titleWrap">
+      <div class="title">🚗 지훈이의 토미카 월드</div>
+      <div class="starBadge" id="starBadge">⭐ <span id="starCount">0</span></div>
+    </div>
     <div class="topBtns">
+      <button class="roundBtn" id="undoBtn" title="되돌리기">↩️</button>
+      <button class="roundBtn" id="settingsBtn" title="환경설정">⚙️</button>
       <button class="roundBtn" id="clearAllBtn" title="전체 지우기">🧹</button>
       <button class="roundBtn" id="carBoxBtn" title="토미카 박스">📦</button>
     </div>
   </header>
 
   <div id="stageWrap">
+    <div id="decorStrip"></div>
     <div id="gridWrap">
       <div id="cellsLayer"></div>
       <div class="carEl" id="car"><span class="carEmoji" id="carEmoji">🏎️</span></div>
@@ -304,14 +409,38 @@
 
 </div>
 
-<div id="carModalBackdrop" class="hidden">
-  <div id="carModal">
+<div id="carModalBackdrop" class="modalBackdrop hidden">
+  <div class="modalBox" id="carModal">
     <div class="modalTitle">타고 싶은 차를 골라요! 🚗</div>
-    <div class="carOptions">
-      <div class="carOpt" data-car="🚒">🚒</div>
-      <div class="carOpt" data-car="🚓">🚓</div>
-      <div class="carOpt chosen" data-car="🏎️">🏎️</div>
+    <div class="carOptions" id="carOptionsList"></div>
+    <button class="closeBtn" id="carModalCloseBtn">닫기</button>
+  </div>
+</div>
+
+<div id="settingsModalBackdrop" class="modalBackdrop hidden">
+  <div class="modalBox" id="settingsModal">
+    <div class="modalTitle">환경설정 ⚙️</div>
+    <div class="settingsRow">
+      <span class="settingsLabel">🔊 소리</span>
+      <button id="soundToggleBtn"></button>
     </div>
+    <div class="settingsRow">
+      <span class="settingsLabel">🎨 배경</span>
+      <div class="pillGroup" id="themeGroup">
+        <button class="pillOpt" data-theme="day">☀️ 낮</button>
+        <button class="pillOpt" data-theme="night">🌙 밤</button>
+        <button class="pillOpt" data-theme="farm">🚜 농장</button>
+      </div>
+    </div>
+    <div class="settingsRow">
+      <span class="settingsLabel">🏁 속도</span>
+      <div class="pillGroup" id="speedGroup">
+        <button class="pillOpt" data-speed="slow">🐢 느리게</button>
+        <button class="pillOpt" data-speed="normal">🚗 보통</button>
+        <button class="pillOpt" data-speed="fast">🐆 빠르게</button>
+      </div>
+    </div>
+    <button class="closeBtn" id="settingsCloseBtn">닫기</button>
   </div>
 </div>
 
@@ -327,26 +456,88 @@
   const goBtn = document.getElementById('goBtn');
   const clearAllBtn = document.getElementById('clearAllBtn');
   const carBoxBtn = document.getElementById('carBoxBtn');
+  const undoBtn = document.getElementById('undoBtn');
+  const settingsBtn = document.getElementById('settingsBtn');
+  const settingsCloseBtn = document.getElementById('settingsCloseBtn');
+  const carModalCloseBtn = document.getElementById('carModalCloseBtn');
   const carModalBackdrop = document.getElementById('carModalBackdrop');
+  const settingsModalBackdrop = document.getElementById('settingsModalBackdrop');
+  const starCountEl = document.getElementById('starCount');
+  const starBadgeEl = document.getElementById('starBadge');
+  const decorStrip = document.getElementById('decorStrip');
+  const soundToggleBtn = document.getElementById('soundToggleBtn');
 
   cellsLayer.style.gridTemplateColumns = `repeat(${COLS}, 1fr)`;
   cellsLayer.style.gridTemplateRows = `repeat(${ROWS}, 1fr)`;
   gridWrap.style.aspectRatio = `${COLS} / ${ROWS}`;
 
-  // ---------------- Grid data ----------------
-  let grid = Array.from({length: ROWS}, () => Array(COLS).fill(null));
+  // ---------------- Safe storage (file:// / private mode safe) ----------------
+  function safeGet(key, fallback){
+    try{
+      const v = localStorage.getItem(key);
+      if(v === null) return fallback;
+      return JSON.parse(v);
+    }catch(e){ return fallback; }
+  }
+  function safeSet(key, value){
+    try{ localStorage.setItem(key, JSON.stringify(value)); }catch(e){ /* ignore: storage unavailable */ }
+  }
 
-  // pre-place a start block so kids have something to build from
-  grid[ROWS-1][0] = {type:'start', rot:0};
+  // ---------------- Grid data ----------------
+  function defaultGrid(){
+    const g = Array.from({length: ROWS}, () => Array(COLS).fill(null));
+    g[ROWS-1][0] = {type:'start', rot:0};
+    return g;
+  }
+  function isValidGrid(g){
+    return Array.isArray(g) && g.length === ROWS && g.every(row => Array.isArray(row) && row.length === COLS);
+  }
+  let grid = (function(){
+    const saved = safeGet('tomica_grid_v2', null);
+    return isValidGrid(saved) ? saved : defaultGrid();
+  })();
 
   let currentTool = 'straight';
-  let currentCar = '🏎️';
   let playing = false;
   let runId = 0;
+  let movesThisRun = 0;
+  let lapCount = 0;
+  let collectedThisLap = new Set();
+  let history = [];
+
+  // ---------------- Persistent progress ----------------
+  let totalStars = safeGet('tomica_totalStars', 0);
+  const CAR_LIST = [
+    { emoji:'🏎️', name:'스포츠카', need:0 },
+    { emoji:'🚓', name:'경찰차', need:3 },
+    { emoji:'🚒', name:'소방차', need:6 },
+    { emoji:'🚑', name:'구급차', need:10 },
+    { emoji:'🚌', name:'버스', need:15 },
+    { emoji:'🏍️', name:'오토바이', need:20 }
+  ];
+  let currentCar = safeGet('tomica_currentCar', '🏎️');
+  if(!CAR_LIST.some(c => c.emoji === currentCar)) currentCar = '🏎️';
+  carEmojiEl.textContent = currentCar;
+
+  let soundEnabled = safeGet('tomica_soundEnabled', true);
+  let currentTheme = safeGet('tomica_theme', 'day');
+  let speedKey = safeGet('tomica_speed', 'normal');
+  const SPEED_FACTORS = { slow:1.45, normal:1, fast:0.55 };
+
+  function updateStarBadge(){
+    starCountEl.textContent = totalStars;
+    starBadgeEl.classList.remove('pop');
+    void starBadgeEl.offsetWidth;
+    starBadgeEl.classList.add('pop');
+  }
+  updateStarBadge();
+
+  function saveGridState(){ safeSet('tomica_grid_v2', grid); }
 
   // ---------------- Audio (WebAudio synth, no files needed) ----------------
   let audioCtx = null;
   function ensureAudio(){
+    if(!soundEnabled) return;
     if(!audioCtx){
       const AC = window.AudioContext || window.webkitAudioContext;
       if(AC) audioCtx = new AC();
@@ -354,7 +545,7 @@
     if(audioCtx && audioCtx.state === 'suspended'){ audioCtx.resume(); }
   }
   function beep(opts){
-    if(!audioCtx) return;
+    if(!audioCtx || !soundEnabled) return;
     const t0 = audioCtx.currentTime;
     const o = audioCtx.createOscillator();
     const g = audioCtx.createGain();
@@ -369,6 +560,7 @@
     o.start(t0); o.stop(t0 + opts.dur + 0.03);
   }
   function playSound(kind){
+    if(!soundEnabled) return;
     try{
       ensureAudio();
       if(!audioCtx) return;
@@ -380,7 +572,23 @@
       else if(kind === 'boost') beep({type:'square', f0:700, f1:1200, dur:0.14, exp:true, g0:0.12});
       else if(kind === 'jump') beep({type:'sine', f0:300, f1:500, dur:0.12, exp:false, g0:0.1});
       else if(kind === 'noStart') beep({type:'triangle', f0:220, f1:140, dur:0.2, exp:true, g0:0.14});
+      else if(kind === 'star'){ beep({type:'sine', f0:700, f1:1100, dur:0.1, exp:true, g0:0.13}); setTimeout(()=>beep({type:'sine', f0:1000, f1:1400, dur:0.1, exp:true, g0:0.1}), 90); }
+      else if(kind === 'cheer'){
+        [0,120,240,360].forEach((delay,i)=>{
+          setTimeout(()=> beep({type:'square', f0:520+i*100, f1:700+i*100, dur:0.14, exp:true, g0:0.12}), delay);
+        });
+      }
+      else if(kind === 'unlock') beep({type:'sine', f0:500, f1:1300, dur:0.35, exp:true, g0:0.13});
     }catch(e){ /* ignore audio errors */ }
+  }
+
+  // ---------------- Toast ----------------
+  function showToast(msg){
+    const t = document.createElement('div');
+    t.className = 'toast';
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(()=> t.remove(), 2250);
   }
 
   // ---------------- Tile SVG / markup ----------------
@@ -391,15 +599,25 @@
     </svg>`;
   const curveSVG = `<svg viewBox="0 0 100 100" preserveAspectRatio="none">
       <path d="M50,0 A50,50 0 0 0 100,50" stroke="#888e97" stroke-width="34" fill="none"/>
-      <path d="M50,0 A50,50 0 0 0 100,50" stroke="#6b7078" stroke-width="34" fill="none" stroke-opacity="0" />
       <path d="M50,0 A50,50 0 0 0 100,50" stroke="#fff" stroke-width="5" fill="none" stroke-dasharray="10 8"/>
     </svg>`;
-
-  function rotFor(type){
-    if(type === 'straight' || type === 'booster') return 2;
-    if(type === 'curve' || type === 'start') return 4;
-    return 1;
-  }
+  const crossSVG = `<svg viewBox="0 0 100 100" preserveAspectRatio="none">
+      <rect x="0" y="30" width="100" height="40" fill="#888e97"/>
+      <rect x="30" y="0" width="40" height="100" fill="#888e97"/>
+      <rect x="0" y="30" width="100" height="40" fill="none" stroke="#6b7078" stroke-width="2"/>
+      <rect x="30" y="0" width="40" height="100" fill="none" stroke="#6b7078" stroke-width="2"/>
+      <line x1="0" y1="50" x2="34" y2="50" stroke="#fff" stroke-width="5" stroke-dasharray="10 8"/>
+      <line x1="66" y1="50" x2="100" y2="50" stroke="#fff" stroke-width="5" stroke-dasharray="10 8"/>
+      <line x1="50" y1="0" x2="50" y2="34" stroke="#fff" stroke-width="5" stroke-dasharray="10 8"/>
+      <line x1="50" y1="66" x2="50" y2="100" stroke="#fff" stroke-width="5" stroke-dasharray="10 8"/>
+      <circle cx="50" cy="50" r="9" fill="#6b7078"/>
+    </svg>`;
+  const tunnelSVG = `<svg viewBox="0 0 100 100" preserveAspectRatio="none">
+      <rect x="0" y="30" width="100" height="40" fill="#888e97"/>
+      <rect x="18" y="6" width="64" height="88" rx="32" fill="#8a6a4a"/>
+      <rect x="18" y="6" width="64" height="88" rx="32" fill="none" stroke="#5c4630" stroke-width="3"/>
+      <ellipse cx="50" cy="50" rx="24" ry="28" fill="#241a12"/>
+    </svg>`;
 
   function renderTileHTML(type, rot){
     switch(type){
@@ -407,6 +625,15 @@
         return `<div class="tile" style="transform:rotate(${(rot%2)*90}deg)">${straightSVG}</div>`;
       case 'curve':
         return `<div class="tile" style="transform:rotate(${(rot%4)*90}deg)">${curveSVG}</div>`;
+      case 'crossroad':
+        return `<div class="tile">${crossSVG}</div>`;
+      case 'tunnel':
+        return `<div class="tile" style="transform:rotate(${(rot%2)*90}deg)">${tunnelSVG}</div>`;
+      case 'star':
+        return `<div class="tile">
+            <div style="position:absolute;inset:0;transform:rotate(${(rot%2)*90}deg)">${straightSVG}</div>
+            <span class="starIcon">⭐</span>
+          </div>`;
       case 'start':
         return `<div class="tile startTile">
             <div class="startBuilding">🏠</div>
@@ -431,8 +658,14 @@
     }
   }
 
+  function getMaxRot(type){
+    if(type === 'straight' || type === 'booster' || type === 'tunnel' || type === 'star') return 2;
+    if(type === 'curve' || type === 'start') return 4;
+    return 1; // crossroad, jump, eraser
+  }
+
   // ---------------- Inventory ----------------
-  const TOOLS = ['straight','curve','start','booster','jump','eraser'];
+  const TOOLS = ['straight','curve','crossroad','start','booster','jump','tunnel','star','eraser'];
   function buildInventory(){
     inventoryEl.innerHTML = '';
     TOOLS.forEach(id => {
@@ -490,13 +723,25 @@
     setTimeout(()=>flash.remove(), 380);
   }
 
-  // ---------------- Cell tap handling ----------------
-  function getMaxRot(type){
-    if(type === 'straight' || type === 'booster') return 2;
-    if(type === 'curve' || type === 'start') return 4;
-    return 1;
+  // ---------------- Undo ----------------
+  function pushUndo(){
+    history.push(JSON.parse(JSON.stringify(grid)));
+    if(history.length > 15) history.shift();
   }
+  undoBtn.addEventListener('click', ()=>{
+    if(playing) return;
+    if(history.length === 0){
+      undoBtn.classList.add('shakeMe');
+      setTimeout(()=>undoBtn.classList.remove('shakeMe'), 400);
+      return;
+    }
+    grid = history.pop();
+    renderGrid();
+    saveGridState();
+    playSound('erase');
+  });
 
+  // ---------------- Cell tap handling ----------------
   cellsLayer.addEventListener('click', (e)=>{
     if(playing) return;
     const cellEl = e.target.closest('.cell');
@@ -506,24 +751,31 @@
 
     if(tile){
       if(currentTool === 'eraser'){
+        pushUndo();
         grid[r][c] = null;
         renderGrid();
+        saveGridState();
         playSound('erase');
       } else if(tile.type === 'jump'){
-        // jump pad: fun bounce preview instead of rotation
         renderGrid();
         const jt = getCellEl(r,c).querySelector('.jumpTile');
         if(jt){ jt.classList.add('bounce'); setTimeout(()=>jt.classList.remove('bounce'), 350); }
         playSound('jump');
+      } else if(tile.type === 'crossroad'){
+        // crossroad has no rotation state, just a gentle bounce as feedback
+        playSound('rotate');
       } else {
+        pushUndo();
         tile.rot = (tile.rot + 1) % getMaxRot(tile.type);
         renderGrid();
+        saveGridState();
         playSound('rotate');
       }
       return;
     }
 
     if(currentTool && currentTool !== 'eraser'){
+      pushUndo();
       if(currentTool === 'start'){
         for(let rr=0; rr<ROWS; rr++){
           for(let cc=0; cc<COLS; cc++){
@@ -533,40 +785,122 @@
       }
       grid[r][c] = { type: currentTool, rot: 0 };
       renderGrid();
+      saveGridState();
       spawnDust(getCellEl(r,c));
       playSound('place');
     }
   });
 
-  // ---------------- Car selection ----------------
+  clearAllBtn.addEventListener('click', ()=>{
+    if(playing) stopGo();
+    pushUndo();
+    grid = defaultGrid();
+    renderGrid();
+    saveGridState();
+    playSound('erase');
+  });
+
+  // ---------------- Car box modal ----------------
+  function buildCarModal(){
+    const wrap = document.getElementById('carOptionsList');
+    wrap.innerHTML = '';
+    CAR_LIST.forEach(car => {
+      const unlocked = totalStars >= car.need;
+      const opt = document.createElement('div');
+      opt.className = 'carOpt' + (car.emoji === currentCar ? ' chosen' : '') + (unlocked ? '' : ' locked');
+      opt.innerHTML = `<div class="carEmojiBig">${unlocked ? car.emoji : '🔒'}</div>
+        <div class="carLabel">${unlocked ? car.name : '⭐ ' + car.need}</div>`;
+      opt.addEventListener('click', ()=>{
+        if(!unlocked){
+          opt.classList.add('shakeMe');
+          setTimeout(()=>opt.classList.remove('shakeMe'), 420);
+          showToast(`⭐ 별 ${car.need}개를 모으면 ${car.name}을(를) 탈 수 있어요!`);
+          playSound('noStart');
+          return;
+        }
+        currentCar = car.emoji;
+        safeSet('tomica_currentCar', currentCar);
+        carEmojiEl.textContent = currentCar;
+        buildCarModal();
+        playSound('rotate');
+        setTimeout(()=> carModalBackdrop.classList.add('hidden'), 180);
+      });
+      wrap.appendChild(opt);
+    });
+  }
   carBoxBtn.addEventListener('click', ()=>{
+    buildCarModal();
     carModalBackdrop.classList.remove('hidden');
   });
   carModalBackdrop.addEventListener('click', (e)=>{
     if(e.target === carModalBackdrop) carModalBackdrop.classList.add('hidden');
   });
-  document.querySelectorAll('.carOpt').forEach(opt => {
-    opt.addEventListener('click', ()=>{
-      currentCar = opt.dataset.car;
-      document.querySelectorAll('.carOpt').forEach(o=>o.classList.remove('chosen'));
-      opt.classList.add('chosen');
-      carEmojiEl.textContent = currentCar;
-      setTimeout(()=> carModalBackdrop.classList.add('hidden'), 180);
-    });
+  carModalCloseBtn.addEventListener('click', ()=> carModalBackdrop.classList.add('hidden'));
+
+  // ---------------- Settings modal ----------------
+  const THEMES = {
+    day:   { sky:'#EAF6FF', mat:'#BFE6A8', matDark:'#A8D68F', decor:['☁️','🌳','☁️','🌼'] },
+    night: { sky:'#182544', mat:'#3D5A6C', matDark:'#2C4451', decor:['🌙','⭐','✨','⭐'] },
+    farm:  { sky:'#FFE9C7', mat:'#E5CE86', matDark:'#D2B662', decor:['🌾','🐔','🚜','🌻'] }
+  };
+  function applyTheme(key){
+    if(!THEMES[key]) key = 'day';
+    currentTheme = key;
+    const t = THEMES[key];
+    document.documentElement.style.setProperty('--sky', t.sky);
+    document.documentElement.style.setProperty('--mat', t.mat);
+    document.documentElement.style.setProperty('--mat-dark', t.matDark);
+    decorStrip.innerHTML = t.decor.map(e => `<span>${e}</span>`).join('');
+    document.querySelectorAll('#themeGroup .pillOpt').forEach(b => b.classList.toggle('active', b.dataset.theme === key));
+    safeSet('tomica_theme', key);
+  }
+  function applySpeed(key){
+    if(!SPEED_FACTORS[key]) key = 'normal';
+    speedKey = key;
+    document.querySelectorAll('#speedGroup .pillOpt').forEach(b => b.classList.toggle('active', b.dataset.speed === key));
+    safeSet('tomica_speed', key);
+  }
+  function updateSoundBtn(){
+    soundToggleBtn.textContent = soundEnabled ? '🔊 켜짐' : '🔇 꺼짐';
+    soundToggleBtn.classList.toggle('active', soundEnabled);
+  }
+  soundToggleBtn.addEventListener('click', ()=>{
+    soundEnabled = !soundEnabled;
+    safeSet('tomica_soundEnabled', soundEnabled);
+    updateSoundBtn();
+    if(soundEnabled){ ensureAudio(); playSound('rotate'); }
   });
+  document.querySelectorAll('#themeGroup .pillOpt').forEach(btn=>{
+    btn.addEventListener('click', ()=> applyTheme(btn.dataset.theme));
+  });
+  document.querySelectorAll('#speedGroup .pillOpt').forEach(btn=>{
+    btn.addEventListener('click', ()=> applySpeed(btn.dataset.speed));
+  });
+  settingsBtn.addEventListener('click', ()=> settingsModalBackdrop.classList.remove('hidden'));
+  settingsModalBackdrop.addEventListener('click', (e)=>{
+    if(e.target === settingsModalBackdrop) settingsModalBackdrop.classList.add('hidden');
+  });
+  settingsCloseBtn.addEventListener('click', ()=> settingsModalBackdrop.classList.add('hidden'));
+
+  applyTheme(currentTheme);
+  applySpeed(speedKey);
+  updateSoundBtn();
 
   // ---------------- Simulation ----------------
+  // Note: car emoji (🏎️🚓🚒🚑🚌🏍️) visually faces LEFT at 0deg rotation on most
+  // platforms, so these angles are offset 180deg from the raw direction vector
+  // so the car actually points the way it's driving instead of backwards.
   const DIRS = {
-    E: { dx:1, dy:0, angle:0 },
-    S: { dx:0, dy:1, angle:90 },
-    W: { dx:-1, dy:0, angle:180 },
-    N: { dx:0, dy:-1, angle:270 }
+    E: { dx:1, dy:0, angle:180 },
+    S: { dx:0, dy:1, angle:270 },
+    W: { dx:-1, dy:0, angle:0 },
+    N: { dx:0, dy:-1, angle:90 }
   };
   const OPPOSITE = { E:'W', W:'E', N:'S', S:'N' };
   const startDirOrder = ['E','S','W','N'];
 
   function getConnections(tile){
-    if(tile.type === 'straight' || tile.type === 'booster'){
+    if(tile.type === 'straight' || tile.type === 'booster' || tile.type === 'tunnel' || tile.type === 'star'){
       return (tile.rot % 2 === 0) ? ['W','E'] : ['N','S'];
     }
     if(tile.type === 'curve'){
@@ -574,6 +908,9 @@
       return states[tile.rot % 4];
     }
     if(tile.type === 'jump'){
+      return ['N','E','S','W'];
+    }
+    if(tile.type === 'crossroad'){
       return ['N','E','S','W'];
     }
     return [];
@@ -624,15 +961,17 @@
     setTimeout(()=>puff.remove(), 470);
   }
 
-  function spawnPopStars(x,y){
-    for(let i=0;i<7;i++){
+  function spawnPopStars(x,y,count,emojis){
+    count = count || 7;
+    emojis = emojis || ['✨','💫'];
+    for(let i=0;i<count;i++){
       const s = document.createElement('div');
       s.className = 'popStar';
-      s.textContent = Math.random() < 0.5 ? '✨' : '💫';
+      s.textContent = emojis[Math.floor(Math.random()*emojis.length)];
       s.style.left = (x-10)+'px';
       s.style.top = (y-10)+'px';
       const ang = Math.random()*Math.PI*2;
-      const dist = 30 + Math.random()*40;
+      const dist = 28 + Math.random()*46;
       s.style.setProperty('--sdx', (Math.cos(ang)*dist)+'px');
       s.style.setProperty('--sdy', (Math.sin(ang)*dist)+'px');
       gridWrap.appendChild(s);
@@ -640,9 +979,15 @@
     }
   }
 
-  function animateCarTo(nr,nc,dir,durationMs,myRunId,cb){
+  function animateCarTo(nr,nc,dir,durationMs,myRunId,cb,tunnelFade){
     const { x, y, size } = cellCenter(nr,nc);
-    carEl.style.transition = `left ${durationMs}ms linear, top ${durationMs}ms linear, transform ${durationMs}ms linear`;
+    if(tunnelFade){
+      carEl.style.transition = `left ${durationMs}ms linear, top ${durationMs}ms linear, transform ${durationMs}ms linear, opacity ${Math.max(60,durationMs*0.4)}ms ease`;
+      setTimeout(()=>{ if(myRunId===runId) carEl.style.opacity = '0.12'; }, 20);
+      setTimeout(()=>{ if(myRunId===runId) carEl.style.opacity = '1'; }, Math.max(80, durationMs*0.55));
+    } else {
+      carEl.style.transition = `left ${durationMs}ms linear, top ${durationMs}ms linear, transform ${durationMs}ms linear`;
+    }
     carEl.style.left = (x - size*0.36) + 'px';
     carEl.style.top = (y - size*0.36) + 'px';
     carEl.style.transform = `rotate(${DIRS[dir].angle}deg)`;
@@ -678,6 +1023,39 @@
     }, 560);
   }
 
+  function collectStar(nr,nc){
+    totalStars++;
+    safeSet('tomica_totalStars', totalStars);
+    updateStarBadge();
+    playSound('star');
+    const { x, y } = cellCenter(nr,nc);
+    spawnPopStars(x, y, 6, ['⭐','✨']);
+    const justUnlocked = CAR_LIST.find(c => c.need === totalStars);
+    if(justUnlocked){
+      setTimeout(()=>{
+        playSound('unlock');
+        showToast(`🎉 새 자동차 '${justUnlocked.name}'가 열렸어요!`);
+      }, 250);
+    }
+  }
+
+  function showLapBanner(){
+    const banner = document.createElement('div');
+    banner.className = 'lapBanner';
+    lapCount++;
+    banner.textContent = lapCount === 1 ? '🎉 트랙 완주! 🎉' : `🎉 ${lapCount}바퀴 완주! 🎉`;
+    gridWrap.appendChild(banner);
+    setTimeout(()=> banner.remove(), 1550);
+  }
+
+  function celebrateLap(){
+    playSound('cheer');
+    const { x, y } = cellCenter(carPos.r, carPos.c);
+    spawnPopStars(x, y, 16, ['🎉','🎊','⭐','✨']);
+    showLapBanner();
+    collectedThisLap.clear();
+  }
+
   function moveNext(myRunId){
     if(!playing || myRunId !== runId) return;
     const d = DIRS[carDir];
@@ -687,11 +1065,33 @@
       return;
     }
     const tile = grid[nr][nc];
-    if(!tile || tile.type === 'start'){
+    if(!tile){
       bounceOff(carDir);
       return;
     }
     const incoming = OPPOSITE[carDir];
+
+    if(tile.type === 'start'){
+      if(movesThisRun >= 3){
+        animateCarTo(nr, nc, carDir, NORMAL_MS * SPEED_FACTORS[speedKey], myRunId, ()=>{
+          carPos = { r:nr, c:nc };
+          movesThisRun = 0;
+          celebrateLap();
+          setTimeout(()=>{
+            if(myRunId !== runId) return;
+            const s = findStart();
+            carDir = s ? startDirOrder[s.rot % 4] : carDir;
+            placeCarAtCell(carPos.r, carPos.c, carDir);
+            setTimeout(()=> moveNext(myRunId), 260);
+          }, 700);
+        });
+        return;
+      } else {
+        bounceOff(carDir);
+        return;
+      }
+    }
+
     const conns = getConnections(tile);
     if(conns.indexOf(incoming) === -1){
       bounceOff(carDir);
@@ -699,22 +1099,35 @@
     }
     let outgoing;
     if(tile.type === 'jump'){
-      outgoing = carDir; // pass straight through, bounce is just visual flair
+      outgoing = carDir;
+    } else if(conns.length > 2){
+      const available = conns.filter(x => x !== incoming);
+      outgoing = available.indexOf(carDir) !== -1 ? carDir : available[0];
     } else {
       outgoing = conns.find(x => x !== incoming);
     }
     const isBooster = tile.type === 'booster';
-    const durationMs = isBooster ? FAST_MS : NORMAL_MS;
+    const durationMs = (isBooster ? FAST_MS : NORMAL_MS) * SPEED_FACTORS[speedKey];
     if(isBooster) playSound('boost');
     if(tile.type === 'jump'){
       const jt = getCellEl(nr,nc).querySelector('.jumpTile');
-      if(jt){ jt.classList.add('bounce'); setTimeout(()=>jt && jt.classList.remove('bounce'), 350); }
+      if(jt){ jt.classList.add('bounce'); setTimeout(()=>{ if(jt) jt.classList.remove('bounce'); }, 350); }
     }
+    const tunnelFade = tile.type === 'tunnel';
+    const tileType = tile.type;
     animateCarTo(nr, nc, outgoing, durationMs, myRunId, ()=>{
       carPos = { r:nr, c:nc };
       carDir = outgoing;
+      movesThisRun++;
+      if(tileType === 'star'){
+        const key = nr + '_' + nc;
+        if(!collectedThisLap.has(key)){
+          collectedThisLap.add(key);
+          collectStar(nr,nc);
+        }
+      }
       moveNext(myRunId);
-    });
+    }, tunnelFade);
   }
 
   function startGo(){
@@ -724,11 +1137,15 @@
       goBtn.classList.add('shakeMe');
       carBoxBtn.classList.add('shakeMe');
       playSound('noStart');
+      showToast('🏠 출발 블록을 먼저 놓아주세요!');
       setTimeout(()=>{ goBtn.classList.remove('shakeMe'); carBoxBtn.classList.remove('shakeMe'); }, 420);
       return;
     }
     playing = true;
     runId++;
+    lapCount = 0;
+    movesThisRun = 0;
+    collectedThisLap.clear();
     const myRunId = runId;
     updateModeUI();
     const dir = startDirOrder[start.rot % 4];
@@ -750,14 +1167,6 @@
   goBtn.addEventListener('click', ()=>{
     ensureAudio();
     if(playing) stopGo(); else startGo();
-  });
-
-  clearAllBtn.addEventListener('click', ()=>{
-    if(playing) stopGo();
-    grid = Array.from({length: ROWS}, () => Array(COLS).fill(null));
-    grid[ROWS-1][0] = { type:'start', rot:0 };
-    renderGrid();
-    playSound('erase');
   });
 
   updateModeUI();
