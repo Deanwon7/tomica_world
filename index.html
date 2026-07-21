@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>지훈이의 토미카 월드 - 트랙 빌더</title>
+<title>지훈이의 토미카 월드2.1 - 트랙 빌더</title>
 <style>
   :root{
     --sky:#EAF6FF;
@@ -69,38 +69,59 @@
   }
   .starBadge.pop{ animation:starBadgePop .35s ease; }
   @keyframes starBadgePop{ 0%{transform:scale(1);} 50%{transform:scale(1.3);} 100%{transform:scale(1);} }
-  .topBtns{ display:flex; gap:6px; }
+  .topBtns{ display:flex; gap:9px; }
   .roundBtn{
     border:none; border-radius:16px;
-    width:42px; height:42px;
-    font-size:19px;
+    width:46px; height:46px;
+    font-size:20px;
     display:flex; align-items:center; justify-content:center;
     box-shadow:0 4px 0 rgba(0,0,0,0.15);
     cursor:pointer;
     transition:transform .06s;
+    -webkit-tap-highlight-color:transparent;
+    flex-shrink:0;
   }
   .roundBtn:active{ transform:translateY(3px); box-shadow:0 1px 0 rgba(0,0,0,0.15); }
   #undoBtn{ background:#DDE3EA; }
-  #missionBtn{ background:var(--green); }
   #settingsBtn{ background:var(--purple); }
   #clearAllBtn{ background:var(--orange); }
   #carBoxBtn{ background:var(--blue); }
+  /* ---------------- Mode tabs (자유 놀이 / 미션) ---------------- */
+  #modeTabs{
+    display:flex; gap:8px;
+    padding:0 2px 8px;
+    flex-shrink:0;
+  }
+  .modeTab{
+    flex:1;
+    min-height:50px;
+    border:none; border-radius:16px;
+    font-size:clamp(14px,4vw,16px); font-weight:800;
+    background:#F1F4F8; color:var(--ink);
+    box-shadow:0 4px 0 rgba(0,0,0,0.08);
+    cursor:pointer;
+    transition:transform .06s;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .modeTab:active{ transform:translateY(3px); box-shadow:0 1px 0 rgba(0,0,0,0.08); }
+  .modeTab.active{
+    background:var(--blue); color:#fff;
+    box-shadow:0 4px 0 var(--blue-dark);
+  }
+  #missionTab.active{ background:var(--green); box-shadow:0 4px 0 var(--green-dark); }
 
   /* ---------------- Mission bar / cards ---------------- */
   #missionBar{
     display:none;
+    flex-direction:column;
     width:min(94vw, 92vh, 480px);
-    align-items:center; justify-content:space-between;
+    align-items:center; justify-content:center;
     background:#fff; border-radius:14px; padding:8px 12px;
     box-shadow:0 4px 0 rgba(0,0,0,0.07);
-    gap:8px;
+    text-align:center;
   }
   .missionBarTitle{ font-weight:800; font-size:13px; color:var(--blue-dark); }
   .missionBarGoal{ font-size:11px; color:var(--ink); opacity:0.7; margin-top:2px; }
-  #missionExitBtn{
-    flex-shrink:0; border:none; border-radius:12px; padding:7px 10px;
-    background:#F1F4F8; font-weight:700; font-size:12px; cursor:pointer;
-  }
   .cell.editableHint{
     background:rgba(61,139,253,0.16); border-radius:6px;
     animation: hintPulse 1.2s ease-in-out infinite;
@@ -424,36 +445,22 @@
     </div>
     <div class="topBtns">
       <button class="roundBtn" id="undoBtn" title="되돌리기">↩️</button>
-      <button class="roundBtn" id="missionBtn" title="미션">🎯</button>
       <button class="roundBtn" id="settingsBtn" title="환경설정">⚙️</button>
       <button class="roundBtn" id="clearAllBtn" title="전체 지우기">🧹</button>
       <button class="roundBtn" id="carBoxBtn" title="토미카 박스">📦</button>
     </div>
   </header>
 
-  <div id="modeSwitch">
-    <button class="modePill active" id="freeModeBtn">🎨 자유 놀이</button>
-    <button class="modePill" id="missionModeBtn">🎯 미션</button>
+  <div id="modeTabs">
+    <button class="modeTab active" id="freePlayTab">🚗 자유 놀이</button>
+    <button class="modeTab" id="missionTab">🎯 미션</button>
   </div>
 
   <div id="stageWrap">
-    <div id="missionBar" class="missionBar hidden">
-      <div class="msLeft">
-        <span id="msIcon">🎯</span>
-        <div class="msTexts">
-          <div class="msTitle" id="msTitle">1단계</div>
-          <div class="msInstruction" id="msInstruction">설명</div>
-        </div>
-      </div>
-      <button class="msListBtn" id="msListBtn" title="스테이지 목록">📋</button>
-    </div>
     <div id="decorStrip"></div>
     <div id="missionBar">
-      <div>
-        <div class="missionBarTitle" id="missionBarTitle"></div>
-        <div class="missionBarGoal" id="missionBarGoal"></div>
-      </div>
-      <button id="missionExitBtn">🚪 나가기</button>
+      <div class="missionBarTitle" id="missionBarTitle"></div>
+      <div class="missionBarGoal" id="missionBarGoal"></div>
     </div>
     <div id="gridWrap">
       <div id="cellsLayer"></div>
@@ -988,9 +995,9 @@
   updateSoundBtn();
 
   // ---------------- Mission mode ----------------
-  const missionBtn = document.getElementById('missionBtn');
+  const freePlayTab = document.getElementById('freePlayTab');
+  const missionTab = document.getElementById('missionTab');
   const missionBar = document.getElementById('missionBar');
-  const missionExitBtn = document.getElementById('missionExitBtn');
   const missionModalBackdrop = document.getElementById('missionModalBackdrop');
   const missionModalCloseBtn = document.getElementById('missionModalCloseBtn');
   const missionListEl = document.getElementById('missionList');
@@ -1141,6 +1148,11 @@
     decorStrip.style.display = 'flex';
   }
 
+  function updateModeTabs(){
+    freePlayTab.classList.toggle('active', !missionActive);
+    missionTab.classList.toggle('active', missionActive);
+  }
+
   function enterMission(idx){
     if(playing) stopGo();
     if(!missionActive){ freeGridSnapshot = grid; }
@@ -1156,6 +1168,7 @@
     buildInventory();
     renderGrid();
     showMissionBar(stage);
+    updateModeTabs();
   }
 
   function exitMission(){
@@ -1171,6 +1184,7 @@
     buildInventory();
     renderGrid();
     hideMissionBar();
+    updateModeTabs();
   }
 
   function buildMissionModal(){
@@ -1203,7 +1217,10 @@
     });
   }
 
-  missionBtn.addEventListener('click', ()=>{
+  freePlayTab.addEventListener('click', ()=>{
+    if(missionActive) exitMission();
+  });
+  missionTab.addEventListener('click', ()=>{
     buildMissionModal();
     missionModalBackdrop.classList.remove('hidden');
   });
@@ -1211,7 +1228,6 @@
     if(e.target === missionModalBackdrop) missionModalBackdrop.classList.add('hidden');
   });
   missionModalCloseBtn.addEventListener('click', ()=> missionModalBackdrop.classList.add('hidden'));
-  missionExitBtn.addEventListener('click', exitMission);
   stageClearNextBtn.addEventListener('click', ()=>{
     stageClearBackdrop.classList.add('hidden');
     if(currentStageIndex < STAGES.length - 1) enterMission(currentStageIndex + 1);
