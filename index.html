@@ -81,9 +81,47 @@
   }
   .roundBtn:active{ transform:translateY(3px); box-shadow:0 1px 0 rgba(0,0,0,0.15); }
   #undoBtn{ background:#DDE3EA; }
+  #missionBtn{ background:var(--green); }
   #settingsBtn{ background:var(--purple); }
   #clearAllBtn{ background:var(--orange); }
   #carBoxBtn{ background:var(--blue); }
+
+  /* ---------------- Mission bar / cards ---------------- */
+  #missionBar{
+    display:none;
+    width:min(94vw, 92vh, 480px);
+    align-items:center; justify-content:space-between;
+    background:#fff; border-radius:14px; padding:8px 12px;
+    box-shadow:0 4px 0 rgba(0,0,0,0.07);
+    gap:8px;
+  }
+  .missionBarTitle{ font-weight:800; font-size:13px; color:var(--blue-dark); }
+  .missionBarGoal{ font-size:11px; color:var(--ink); opacity:0.7; margin-top:2px; }
+  #missionExitBtn{
+    flex-shrink:0; border:none; border-radius:12px; padding:7px 10px;
+    background:#F1F4F8; font-weight:700; font-size:12px; cursor:pointer;
+  }
+  .cell.editableHint{
+    background:rgba(61,139,253,0.16); border-radius:6px;
+    animation: hintPulse 1.2s ease-in-out infinite;
+  }
+  @keyframes hintPulse{
+    0%,100%{ box-shadow: inset 0 0 0 2px rgba(61,139,253,0.32); }
+    50%{ box-shadow: inset 0 0 0 2px rgba(61,139,253,0.9); }
+  }
+  #missionList{ display:flex; flex-direction:column; gap:8px; margin-bottom:6px; text-align:left; }
+  .missionCard{
+    display:flex; align-items:center; gap:10px;
+    background:#F7F9FC; border-radius:14px; padding:10px 12px;
+    cursor:pointer;
+  }
+  .missionCard.done{ background:#E8FBEE; }
+  .missionCard.locked{ opacity:0.55; }
+  .missionCardIcon{ font-size:22px; flex-shrink:0; }
+  .missionCardBody{ flex:1; min-width:0; }
+  .missionCardTitle{ font-weight:800; font-size:13px; color:var(--ink); }
+  .missionCardGoal{ font-size:11px; color:var(--ink); opacity:0.65; margin-top:2px; }
+  .missionCardReward{ font-weight:800; font-size:12px; color:var(--orange-dark); flex-shrink:0; }
 
   /* ---------------- Stage / grid ---------------- */
   #stageWrap{
@@ -386,14 +424,37 @@
     </div>
     <div class="topBtns">
       <button class="roundBtn" id="undoBtn" title="되돌리기">↩️</button>
+      <button class="roundBtn" id="missionBtn" title="미션">🎯</button>
       <button class="roundBtn" id="settingsBtn" title="환경설정">⚙️</button>
       <button class="roundBtn" id="clearAllBtn" title="전체 지우기">🧹</button>
       <button class="roundBtn" id="carBoxBtn" title="토미카 박스">📦</button>
     </div>
   </header>
 
+  <div id="modeSwitch">
+    <button class="modePill active" id="freeModeBtn">🎨 자유 놀이</button>
+    <button class="modePill" id="missionModeBtn">🎯 미션</button>
+  </div>
+
   <div id="stageWrap">
+    <div id="missionBar" class="missionBar hidden">
+      <div class="msLeft">
+        <span id="msIcon">🎯</span>
+        <div class="msTexts">
+          <div class="msTitle" id="msTitle">1단계</div>
+          <div class="msInstruction" id="msInstruction">설명</div>
+        </div>
+      </div>
+      <button class="msListBtn" id="msListBtn" title="스테이지 목록">📋</button>
+    </div>
     <div id="decorStrip"></div>
+    <div id="missionBar">
+      <div>
+        <div class="missionBarTitle" id="missionBarTitle"></div>
+        <div class="missionBarGoal" id="missionBarGoal"></div>
+      </div>
+      <button id="missionExitBtn">🚪 나가기</button>
+    </div>
     <div id="gridWrap">
       <div id="cellsLayer"></div>
       <div class="carEl" id="car"><span class="carEmoji" id="carEmoji">🏎️</span></div>
@@ -414,6 +475,25 @@
     <div class="modalTitle">타고 싶은 차를 골라요! 🚗</div>
     <div class="carOptions" id="carOptionsList"></div>
     <button class="closeBtn" id="carModalCloseBtn">닫기</button>
+  </div>
+</div>
+
+<div id="missionModalBackdrop" class="modalBackdrop hidden">
+  <div class="modalBox" id="missionModal">
+    <div class="modalTitle">🎯 미션 모드</div>
+    <div id="missionList"></div>
+    <button class="closeBtn" id="missionModalCloseBtn">닫기</button>
+  </div>
+</div>
+
+<div id="stageClearBackdrop" class="modalBackdrop hidden">
+  <div class="modalBox" id="stageClearModal">
+    <div class="modalTitle" id="stageClearTitle">🏆 미션 성공!</div>
+    <div id="stageClearDesc" style="margin-bottom:14px;font-weight:700;color:var(--ink)"></div>
+    <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+      <button class="closeBtn" id="stageClearNextBtn">다음 단계 ▶️</button>
+      <button class="closeBtn" id="stageClearListBtn" style="background:var(--purple)">미션 목록</button>
+    </div>
   </div>
 </div>
 
@@ -505,6 +585,14 @@
   let collectedThisLap = new Set();
   let history = [];
 
+  // mission mode state
+  let missionActive = false;
+  let currentStageIndex = -1;
+  let freeGridSnapshot = null;
+  let lockedCellSet = new Set();
+  let editableCellSet = null;
+  let typesUsedThisRun = new Set();
+
   // ---------------- Persistent progress ----------------
   let totalStars = safeGet('tomica_totalStars', 0);
   const CAR_LIST = [
@@ -532,7 +620,7 @@
   }
   updateStarBadge();
 
-  function saveGridState(){ safeSet('tomica_grid_v2', grid); }
+  function saveGridState(){ if(missionActive) return; safeSet('tomica_grid_v2', grid); }
 
   // ---------------- Audio (WebAudio synth, no files needed) ----------------
   let audioCtx = null;
@@ -667,8 +755,10 @@
   // ---------------- Inventory ----------------
   const TOOLS = ['straight','curve','crossroad','start','booster','jump','tunnel','star','eraser'];
   function buildInventory(){
+    const tools = (missionActive && STAGES[currentStageIndex]) ? STAGES[currentStageIndex].allowedTools : TOOLS;
+    if(tools.indexOf(currentTool) === -1) currentTool = tools[0];
     inventoryEl.innerHTML = '';
-    TOOLS.forEach(id => {
+    tools.forEach(id => {
       const btn = document.createElement('div');
       btn.className = 'invBtn' + (id === currentTool ? ' selected' : '');
       btn.dataset.tool = id;
@@ -688,7 +778,9 @@
     for(let r=0;r<ROWS;r++){
       for(let c=0;c<COLS;c++){
         const tile = grid[r][c];
-        html += `<div class="cell" data-r="${r}" data-c="${c}">${tile ? renderTileHTML(tile.type, tile.rot) : ''}</div>`;
+        let cls = 'cell';
+        if(missionActive && editableCellSet && !tile && editableCellSet.has(r+'_'+c)) cls += ' editableHint';
+        html += `<div class="${cls}" data-r="${r}" data-c="${c}">${tile ? renderTileHTML(tile.type, tile.rot) : ''}</div>`;
       }
     }
     cellsLayer.innerHTML = html;
@@ -747,6 +839,8 @@
     const cellEl = e.target.closest('.cell');
     if(!cellEl) return;
     const r = parseInt(cellEl.dataset.r,10), c = parseInt(cellEl.dataset.c,10);
+    const cellKey = r + '_' + c;
+    if(missionActive && lockedCellSet.has(cellKey)) return; // fixed mission pieces can't be touched
     const tile = grid[r][c];
 
     if(tile){
@@ -775,6 +869,7 @@
     }
 
     if(currentTool && currentTool !== 'eraser'){
+      if(missionActive && editableCellSet && !editableCellSet.has(cellKey)) return;
       pushUndo();
       if(currentTool === 'start'){
         for(let rr=0; rr<ROWS; rr++){
@@ -793,6 +888,12 @@
 
   clearAllBtn.addEventListener('click', ()=>{
     if(playing) stopGo();
+    if(missionActive){
+      grid = buildStageGrid(STAGES[currentStageIndex]);
+      renderGrid();
+      playSound('erase');
+      return;
+    }
     pushUndo();
     grid = defaultGrid();
     renderGrid();
@@ -885,6 +986,241 @@
   applyTheme(currentTheme);
   applySpeed(speedKey);
   updateSoundBtn();
+
+  // ---------------- Mission mode ----------------
+  const missionBtn = document.getElementById('missionBtn');
+  const missionBar = document.getElementById('missionBar');
+  const missionExitBtn = document.getElementById('missionExitBtn');
+  const missionModalBackdrop = document.getElementById('missionModalBackdrop');
+  const missionModalCloseBtn = document.getElementById('missionModalCloseBtn');
+  const missionListEl = document.getElementById('missionList');
+  const stageClearBackdrop = document.getElementById('stageClearBackdrop');
+  const stageClearTitle = document.getElementById('stageClearTitle');
+  const stageClearDesc = document.getElementById('stageClearDesc');
+  const stageClearNextBtn = document.getElementById('stageClearNextBtn');
+  const stageClearListBtn = document.getElementById('stageClearListBtn');
+
+  let missionCompleted = safeGet('tomica_mission_completed_v1', []);
+
+  const STAGES = [
+    {
+      id:1, title:'1단계: 트랙 잇기', reward:2,
+      goalText:'빈칸에 직선 도로를 놓아 트랙을 잇고 출발점으로 돌아오세요!',
+      fixedTiles:[
+        {r:5,c:0,type:'start',rot:0},
+        {r:5,c:2,type:'curve',rot:3},
+        {r:3,c:2,type:'curve',rot:2},
+        {r:3,c:1,type:'straight',rot:0},
+        {r:3,c:0,type:'curve',rot:1},
+        {r:4,c:0,type:'straight',rot:1}
+      ],
+      editableCells:[{r:5,c:1},{r:4,c:2}],
+      allowedTools:['straight','eraser'],
+      condition:{type:'lap'}
+    },
+    {
+      id:2, title:'2단계: 곡선 도로 잇기', reward:2,
+      goalText:'직선과 곡선 도로를 잘 골라 빈칸을 채워보세요!',
+      fixedTiles:[
+        {r:5,c:0,type:'start',rot:0},
+        {r:5,c:2,type:'straight',rot:0},
+        {r:5,c:3,type:'curve',rot:3},
+        {r:3,c:3,type:'straight',rot:1},
+        {r:2,c:3,type:'curve',rot:2},
+        {r:2,c:2,type:'straight',rot:0},
+        {r:2,c:1,type:'straight',rot:0},
+        {r:3,c:0,type:'straight',rot:1},
+        {r:4,c:0,type:'straight',rot:1}
+      ],
+      editableCells:[{r:5,c:1},{r:4,c:3},{r:2,c:0}],
+      allowedTools:['straight','curve','eraser'],
+      condition:{type:'lap'}
+    },
+    {
+      id:3, title:'3단계: 부스터 트랙', reward:3,
+      goalText:'부스터와 점프대가 있는 큰 트랙을 완성해보세요!',
+      fixedTiles:[
+        {r:5,c:0,type:'start',rot:0},
+        {r:5,c:1,type:'booster',rot:0},
+        {r:5,c:2,type:'straight',rot:0},
+        {r:5,c:4,type:'straight',rot:0},
+        {r:5,c:5,type:'straight',rot:0},
+        {r:5,c:6,type:'curve',rot:3},
+        {r:4,c:6,type:'straight',rot:1},
+        {r:3,c:6,type:'jump',rot:0},
+        {r:1,c:6,type:'curve',rot:2},
+        {r:1,c:5,type:'straight',rot:0},
+        {r:1,c:4,type:'straight',rot:0},
+        {r:1,c:3,type:'straight',rot:0},
+        {r:1,c:2,type:'straight',rot:0},
+        {r:1,c:1,type:'straight',rot:0},
+        {r:2,c:0,type:'straight',rot:1},
+        {r:3,c:0,type:'straight',rot:1},
+        {r:4,c:0,type:'straight',rot:1}
+      ],
+      editableCells:[{r:5,c:3},{r:2,c:6},{r:1,c:0}],
+      allowedTools:['straight','curve','eraser'],
+      condition:{type:'lap'}
+    },
+    {
+      id:4, title:'4단계: 별 2개 모으기', reward:4,
+      goalText:'트랙을 자유롭게 만들고, 별을 2개 모으며 완주해보세요!',
+      fixedTiles:[ {r:5,c:0,type:'start',rot:0} ],
+      editableCells:null,
+      allowedTools:['straight','curve','crossroad','booster','jump','tunnel','star','eraser'],
+      condition:{type:'stars', count:2}
+    },
+    {
+      id:5, title:'5단계: 모든 조각 마스터', reward:5,
+      goalText:'부스터·점프대·터널·별을 모두 지나며 완주해보세요!',
+      fixedTiles:[ {r:5,c:0,type:'start',rot:0} ],
+      editableCells:null,
+      allowedTools:['straight','curve','crossroad','booster','jump','tunnel','star','eraser'],
+      condition:{type:'useTypes', types:['booster','jump','tunnel','star']}
+    }
+  ];
+
+  function buildStageGrid(stage){
+    const g = Array.from({length: ROWS}, () => Array(COLS).fill(null));
+    stage.fixedTiles.forEach(t => { g[t.r][t.c] = { type:t.type, rot:t.rot }; });
+    return g;
+  }
+
+  function evaluateCondition(cond, starsGot, typesGot){
+    if(!cond || cond.type === 'lap') return true;
+    if(cond.type === 'stars') return starsGot >= cond.count;
+    if(cond.type === 'useTypes') return cond.types.every(t => typesGot.has(t));
+    return true;
+  }
+
+  function showMissionHint(stage, starsGot, typesGot){
+    const cond = stage.condition;
+    let msg = '🚗 완주했어요! 다시 도전해봐요.';
+    if(cond.type === 'stars'){
+      msg = `⭐ 별을 ${cond.count}개 모아야 해요! (지금 ${starsGot}개 모았어요)`;
+    } else if(cond.type === 'useTypes'){
+      const names = { booster:'부스터⚡', jump:'점프대⤴️', tunnel:'터널🚇', star:'별⭐' };
+      const missing = cond.types.filter(t => !typesGot.has(t)).map(t => names[t] || t);
+      if(missing.length) msg = `${missing.join(', ')}을(를) 트랙에 넣어 지나가 보세요!`;
+    }
+    showToast(msg);
+  }
+
+  function showStageClearModal(stage){
+    stageClearTitle.textContent = `🏆 ${stage.title} 성공!`;
+    stageClearDesc.textContent = `⭐ 별 ${stage.reward}개를 받았어요!`;
+    const hasNext = currentStageIndex < STAGES.length - 1;
+    stageClearNextBtn.style.display = hasNext ? 'inline-flex' : 'none';
+    stageClearBackdrop.classList.remove('hidden');
+  }
+
+  function stageClear(){
+    const stage = STAGES[currentStageIndex];
+    playSound('unlock');
+    if(missionCompleted.indexOf(stage.id) === -1){
+      missionCompleted.push(stage.id);
+      safeSet('tomica_mission_completed_v1', missionCompleted);
+      totalStars += stage.reward;
+      safeSet('tomica_totalStars', totalStars);
+      updateStarBadge();
+    }
+    playing = false;
+    runId++;
+    updateModeUI();
+    showStageClearModal(stage);
+  }
+
+  function showMissionBar(stage){
+    document.getElementById('missionBarTitle').textContent = stage.title;
+    document.getElementById('missionBarGoal').textContent = stage.goalText;
+    missionBar.style.display = 'flex';
+    decorStrip.style.display = 'none';
+  }
+  function hideMissionBar(){
+    missionBar.style.display = 'none';
+    decorStrip.style.display = 'flex';
+  }
+
+  function enterMission(idx){
+    if(playing) stopGo();
+    if(!missionActive){ freeGridSnapshot = grid; }
+    missionActive = true;
+    currentStageIndex = idx;
+    history = [];
+    const stage = STAGES[idx];
+    grid = buildStageGrid(stage);
+    lockedCellSet = new Set(stage.fixedTiles.map(t => t.r + '_' + t.c));
+    editableCellSet = stage.editableCells ? new Set(stage.editableCells.map(p => p.r + '_' + p.c)) : null;
+    currentTool = stage.allowedTools[0];
+    clearAllBtn.title = '단계 다시 시작';
+    buildInventory();
+    renderGrid();
+    showMissionBar(stage);
+  }
+
+  function exitMission(){
+    if(playing) stopGo();
+    missionActive = false;
+    currentStageIndex = -1;
+    lockedCellSet = new Set();
+    editableCellSet = null;
+    history = [];
+    grid = isValidGrid(freeGridSnapshot) ? freeGridSnapshot : defaultGrid();
+    currentTool = 'straight';
+    clearAllBtn.title = '전체 지우기';
+    buildInventory();
+    renderGrid();
+    hideMissionBar();
+  }
+
+  function buildMissionModal(){
+    missionListEl.innerHTML = '';
+    STAGES.forEach((stage, idx) => {
+      const done = missionCompleted.indexOf(stage.id) !== -1;
+      const prevDone = idx === 0 || missionCompleted.indexOf(STAGES[idx-1].id) !== -1;
+      const locked = !done && !prevDone;
+      const card = document.createElement('div');
+      card.className = 'missionCard' + (locked ? ' locked' : '') + (done ? ' done' : '');
+      card.innerHTML = `<div class="missionCardIcon">${locked ? '🔒' : (done ? '✅' : '🎯')}</div>
+        <div class="missionCardBody">
+          <div class="missionCardTitle">${stage.title}</div>
+          <div class="missionCardGoal">${stage.goalText}</div>
+        </div>
+        <div class="missionCardReward">⭐${stage.reward}</div>`;
+      if(!locked){
+        card.addEventListener('click', ()=>{
+          missionModalBackdrop.classList.add('hidden');
+          enterMission(idx);
+        });
+      } else {
+        card.addEventListener('click', ()=>{
+          card.classList.add('shakeMe');
+          setTimeout(()=>card.classList.remove('shakeMe'), 400);
+          showToast('이전 단계를 먼저 클리어해주세요!');
+        });
+      }
+      missionListEl.appendChild(card);
+    });
+  }
+
+  missionBtn.addEventListener('click', ()=>{
+    buildMissionModal();
+    missionModalBackdrop.classList.remove('hidden');
+  });
+  missionModalBackdrop.addEventListener('click', (e)=>{
+    if(e.target === missionModalBackdrop) missionModalBackdrop.classList.add('hidden');
+  });
+  missionModalCloseBtn.addEventListener('click', ()=> missionModalBackdrop.classList.add('hidden'));
+  missionExitBtn.addEventListener('click', exitMission);
+  stageClearNextBtn.addEventListener('click', ()=>{
+    stageClearBackdrop.classList.add('hidden');
+    if(currentStageIndex < STAGES.length - 1) enterMission(currentStageIndex + 1);
+  });
+  stageClearListBtn.addEventListener('click', ()=>{
+    stageClearBackdrop.classList.add('hidden');
+    buildMissionModal();
+    missionModalBackdrop.classList.remove('hidden');
+  });
 
   // ---------------- Simulation ----------------
   // Note: car emoji (🏎️🚓🚒🚑🚌🏍️) visually faces LEFT at 0deg rotation on most
@@ -1049,11 +1385,23 @@
   }
 
   function celebrateLap(){
+    const starsGot = collectedThisLap.size;
+    const typesGot = new Set(typesUsedThisRun);
     playSound('cheer');
     const { x, y } = cellCenter(carPos.r, carPos.c);
     spawnPopStars(x, y, 16, ['🎉','🎊','⭐','✨']);
-    showLapBanner();
     collectedThisLap.clear();
+    typesUsedThisRun.clear();
+    if(missionActive){
+      const stage = STAGES[currentStageIndex];
+      if(evaluateCondition(stage.condition, starsGot, typesGot)){
+        stageClear();
+      } else {
+        showMissionHint(stage, starsGot, typesGot);
+      }
+    } else {
+      showLapBanner();
+    }
   }
 
   function moveNext(myRunId){
@@ -1126,6 +1474,9 @@
           collectStar(nr,nc);
         }
       }
+      if(tileType === 'booster' || tileType === 'jump' || tileType === 'tunnel' || tileType === 'star'){
+        typesUsedThisRun.add(tileType);
+      }
       moveNext(myRunId);
     }, tunnelFade);
   }
@@ -1146,6 +1497,7 @@
     lapCount = 0;
     movesThisRun = 0;
     collectedThisLap.clear();
+    typesUsedThisRun.clear();
     const myRunId = runId;
     updateModeUI();
     const dir = startDirOrder[start.rot % 4];
